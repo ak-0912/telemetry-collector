@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-collector
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: telemetry-collector
+  template:
+    metadata:
+      labels:
+        app: telemetry-collector
+    spec:
+      containers:
+        - name: telemetry-collector
+          image: telemetry-collector:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: telemetry-collector-secrets
+                  key: postgresDsn
+            - name: WORKER_COUNT
+              value: "8"
+            - name: QUEUE_BATCH_SIZE
+              value: "50"
+            - name: POLL_INTERVAL
+              value: "2s"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"

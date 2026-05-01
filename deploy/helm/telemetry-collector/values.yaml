@@ -1,0 +1,25 @@
+replicaCount: 2
+
+image:
+  repository: telemetry-collector
+  tag: latest
+  pullPolicy: IfNotPresent
+
+env:
+  workerCount: "8"
+  queueBatchSize: "50"
+  pollInterval: "2s"
+  postgresDsn: "postgres://postgres:postgres@postgres:5432/telemetry?sslmode=disable"
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+hpa:
+  minReplicas: 2
+  maxReplicas: 10
+  averageCPUUtilization: 70

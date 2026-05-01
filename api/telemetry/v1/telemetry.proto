@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package telemetry.v1;
+
+option go_package = "telemetry-collector/gen/telemetry/v1;v1";
+
+import "google/protobuf/timestamp.proto";
+
+message TelemetryMessage {
+  string gpu_id = 1;
+  string host_id = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  double gpu_utilization = 4;
+  int64 memory_used_mb = 5;
+  double temperature_c = 6;
+}

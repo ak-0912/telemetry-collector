@@ -1,0 +1,16 @@
+{
+  "name": "telemetry-collector Dev Container",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "telemetry-collector",
+  "workspaceFolder": "/workspaces/telemetry-collector",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "remoteUser": "root",
+  "postCreateCommand": "go mod tidy"
+}
