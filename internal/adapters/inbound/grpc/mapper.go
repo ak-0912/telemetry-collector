@@ -1,17 +1,20 @@
 package grpc
 
 import (
-	pb "telemetry-collector/gen/telemetry/v1"
+	pb "telemetry-collector/api/telemetry/v1"
 	app "telemetry-collector/internal/application/telemetry"
 )
 
 func ToInput(msg *pb.TelemetryMessage) app.Input {
 	return app.Input{
-		GPUID:          msg.GpuId,
-		HostID:         msg.HostId,
-		Timestamp:      msg.Timestamp.AsTime(),
-		GPUUtilization: msg.GpuUtilization,
-		MemoryUsedMB:   msg.MemoryUsedMb,
-		TemperatureC:   msg.TemperatureC,
+		MetricName:          msg.MetricName,
+		GPUID:               msg.GpuId,
+		Device:              msg.Device,
+		UUID:                msg.Uuid,
+		ModelName:           msg.ModelName,
+		HostName:            msg.HostName,
+		Value:               msg.Value,
+		LabelsRaw:           msg.LabelsRaw,
+		ProcessedAtUnixNano: msg.ProcessedAtUnixNano,
 	}
 }

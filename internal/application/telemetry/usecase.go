@@ -17,12 +17,15 @@ func NewProcessUseCase(repo TelemetryRepository) *ProcessUseCase {
 
 func (u *ProcessUseCase) Execute(ctx context.Context, in Input) error {
 	entity := domain.Telemetry{
-		GPUID:          in.GPUID,
-		HostID:         in.HostID,
-		Timestamp:      in.Timestamp,
-		GPUUtilization: in.GPUUtilization,
-		MemoryUsedMB:   in.MemoryUsedMB,
-		TemperatureC:   in.TemperatureC,
+		MetricName:          in.MetricName,
+		GPUID:               in.GPUID,
+		Device:              in.Device,
+		UUID:                in.UUID,
+		ModelName:           in.ModelName,
+		HostName:            in.HostName,
+		Value:               in.Value,
+		LabelsRaw:           in.LabelsRaw,
+		ProcessedAtUnixNano: in.ProcessedAtUnixNano,
 	}
 
 	if err := entity.Validate(); err != nil {

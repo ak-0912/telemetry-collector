@@ -19,7 +19,7 @@ func TestProcessorProcessSuccess(t *testing.T) {
 	useCase := app.NewProcessUseCase(repo)
 	processor := NewProcessor(useCase)
 
-	payload := []byte(`{"gpu_id":"gpu-1","host_id":"host-1","timestamp":{"unix_seconds":1735689600},"gpu_utilization":60,"memory_used_mb":2048,"temperature_c":65.5}`)
+	payload := []byte(`{"metric_name":"gpu.temperature","gpu_id":"gpu-1","device":"nvidia0","uuid":"d083db3f-88d3-4714-bcff-e0a4e95d709f","model_name":"A100","host_name":"host-1","value":65.5,"labels_raw":"{}","processed_at_unix_nano":1735689600000000000}`)
 
 	if err := processor.Process(context.Background(), payload); err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -41,7 +41,7 @@ func TestProcessorProcessValidationError(t *testing.T) {
 	useCase := app.NewProcessUseCase(repo)
 	processor := NewProcessor(useCase)
 
-	payload := []byte(`{"gpu_id":"","host_id":"host-1","timestamp":{"unix_seconds":1735689600},"gpu_utilization":42,"memory_used_mb":1234,"temperature_c":50}`)
+	payload := []byte(`{"metric_name":"gpu.temperature","gpu_id":"","device":"nvidia0","uuid":"d083db3f-88d3-4714-bcff-e0a4e95d709f","model_name":"A100","host_name":"host-1","value":50,"labels_raw":"{}","processed_at_unix_nano":1735689600000000000}`)
 	if err := processor.Process(context.Background(), payload); err == nil {
 		t.Fatal("expected validation error")
 	}

@@ -19,12 +19,15 @@ func NewTelemetryRepository(db *bun.DB) *TelemetryRepository {
 
 func (r *TelemetryRepository) Save(ctx context.Context, t domain.Telemetry) error {
 	model := TelemetryModel{
-		GPUID:          t.GPUID,
-		HostID:         t.HostID,
-		Timestamp:      t.Timestamp,
-		GPUUtilization: t.GPUUtilization,
-		MemoryUsedMB:   t.MemoryUsedMB,
-		TemperatureC:   t.TemperatureC,
+		MetricName:          t.MetricName,
+		GPUID:               t.GPUID,
+		Device:              t.Device,
+		UUID:                t.UUID,
+		ModelName:           t.ModelName,
+		HostName:            t.HostName,
+		Value:               t.Value,
+		LabelsRaw:           t.LabelsRaw,
+		ProcessedAtUnixNano: t.ProcessedAtUnixNano,
 	}
 
 	if _, err := r.db.NewInsert().Model(&model).Exec(ctx); err != nil {

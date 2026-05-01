@@ -2,31 +2,30 @@ package grpc
 
 import (
 	"testing"
-	"time"
-
-	"google.golang.org/protobuf/types/known/timestamppb"
-	pb "telemetry-collector/gen/telemetry/v1"
+	pb "telemetry-collector/api/telemetry/v1"
 )
 
 func TestToInput(t *testing.T) {
-	ts := time.Now().UTC()
 	msg := &pb.TelemetryMessage{
-		GpuId:          "gpu-1",
-		HostId:         "host-1",
-		Timestamp:      timestamppb.New(ts),
-		GpuUtilization: 51.2,
-		MemoryUsedMb:   1024,
-		TemperatureC:   70.5,
+		MetricName:          "gpu.temperature",
+		GpuId:               "gpu-1",
+		Device:              "nvidia0",
+		Uuid:                "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		ModelName:           "A100",
+		HostName:            "node-1",
+		Value:               70.5,
+		LabelsRaw:           "{\"cluster\":\"prod\"}",
+		ProcessedAtUnixNano: 1735689600000000000,
 	}
 
 	in := ToInput(msg)
-	if in.GPUID != "gpu-1" || in.HostID != "host-1" {
-		t.Fatalf("unexpected id mapping: %+v", in)
+	if in.MetricName != "gpu.temperature" || in.GPUID != "gpu-1" || in.UUID != "d083db3f-88d3-4714-bcff-e0a4e95d709f" {
+		t.Fatalf("unexpected core mapping: %+v", in)
 	}
-	if in.Timestamp.Unix() != ts.Unix() {
-		t.Fatalf("unexpected timestamp mapping: got %v want unix %v", in.Timestamp, ts.Unix())
+	if in.Device != "nvidia0" || in.ModelName != "A100" || in.HostName != "node-1" {
+		t.Fatalf("unexpected identity mapping: %+v", in)
 	}
-	if in.GPUUtilization != 51.2 || in.MemoryUsedMB != 1024 || in.TemperatureC != 70.5 {
-		t.Fatalf("unexpected metric mapping: %+v", in)
+	if in.Value != 70.5 || in.LabelsRaw != "{\"cluster\":\"prod\"}" || in.ProcessedAtUnixNano != 1735689600000000000 {
+		t.Fatalf("unexpected value mapping: %+v", in)
 	}
 }

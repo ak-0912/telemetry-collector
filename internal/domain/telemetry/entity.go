@@ -1,13 +1,14 @@
 package telemetry
 
-import "time"
-
 // Telemetry is the core domain aggregate.
 type Telemetry struct {
-	GPUID          string
-	HostID         string
-	Timestamp      time.Time
-	GPUUtilization float64
-	MemoryUsedMB   int64
-	TemperatureC   float64
+	MetricName          string
+	GPUID               string
+	Device              string
+	UUID                string
+	ModelName           string
+	HostName            string
+	Value               float64
+	LabelsRaw           string
+	ProcessedAtUnixNano int64
 }

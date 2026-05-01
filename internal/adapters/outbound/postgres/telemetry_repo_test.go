@@ -25,12 +25,15 @@ func TestTelemetryRepositorySaveWrapsTransientError(t *testing.T) {
 	defer cancel()
 
 	err := repo.Save(ctx, domain.Telemetry{
-		GPUID:          "gpu-1",
-		HostID:         "host-1",
-		Timestamp:      time.Now().UTC(),
-		GPUUtilization: 30,
-		MemoryUsedMB:   10,
-		TemperatureC:   40,
+		MetricName:          "gpu.temperature",
+		GPUID:               "gpu-1",
+		Device:              "nvidia0",
+		UUID:                "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		ModelName:           "A100",
+		HostName:            "host-1",
+		Value:               40,
+		LabelsRaw:           "{}",
+		ProcessedAtUnixNano: 1735689600000000000,
 	})
 	if err == nil {
 		t.Fatal("expected error")

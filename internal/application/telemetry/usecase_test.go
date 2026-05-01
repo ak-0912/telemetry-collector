@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 
 	domain "telemetry-collector/internal/domain/telemetry"
 
@@ -20,17 +19,20 @@ func TestProcessUseCaseExecuteSuccess(t *testing.T) {
 	uc := NewProcessUseCase(repo)
 
 	in := Input{
-		GPUID:          "gpu-1",
-		HostID:         "host-1",
-		Timestamp:      time.Now().UTC(),
-		GPUUtilization: 50,
-		MemoryUsedMB:   4096,
-		TemperatureC:   60,
+		MetricName:          "gpu.temperature",
+		GPUID:               "gpu-1",
+		Device:              "nvidia0",
+		UUID:                "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		ModelName:           "A100",
+		HostName:            "host-1",
+		Value:               60,
+		LabelsRaw:           "{}",
+		ProcessedAtUnixNano: 1735689600000000000,
 	}
 
 	repo.EXPECT().Save(gomock.Any(), gomock.AssignableToTypeOf(domain.Telemetry{})).DoAndReturn(
 		func(_ context.Context, got domain.Telemetry) error {
-			if got.GPUID != in.GPUID || got.HostID != in.HostID {
+			if got.GPUID != in.GPUID || got.HostName != in.HostName || got.UUID != in.UUID {
 				t.Fatalf("unexpected telemetry mapping: %+v", got)
 			}
 			return nil
@@ -50,12 +52,15 @@ func TestProcessUseCaseExecuteValidationError(t *testing.T) {
 	uc := NewProcessUseCase(repo)
 
 	err := uc.Execute(context.Background(), Input{
-		GPUID:          "",
-		HostID:         "host-1",
-		Timestamp:      time.Now().UTC(),
-		GPUUtilization: 50,
-		MemoryUsedMB:   4096,
-		TemperatureC:   60,
+		MetricName:          "gpu.temperature",
+		GPUID:               "",
+		Device:              "nvidia0",
+		UUID:                "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		ModelName:           "A100",
+		HostName:            "host-1",
+		Value:               60,
+		LabelsRaw:           "{}",
+		ProcessedAtUnixNano: 1735689600000000000,
 	})
 	if !domain.IsValidationError(err) {
 		t.Fatalf("expected validation error, got %v", err)
@@ -73,12 +78,15 @@ func TestProcessUseCaseExecuteRepositoryError(t *testing.T) {
 	repo.EXPECT().Save(gomock.Any(), gomock.Any()).Return(repoErr)
 
 	err := uc.Execute(context.Background(), Input{
-		GPUID:          "gpu-1",
-		HostID:         "host-1",
-		Timestamp:      time.Now().UTC(),
-		GPUUtilization: 50,
-		MemoryUsedMB:   4096,
-		TemperatureC:   60,
+		MetricName:          "gpu.temperature",
+		GPUID:               "gpu-1",
+		Device:              "nvidia0",
+		UUID:                "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		ModelName:           "A100",
+		HostName:            "host-1",
+		Value:               60,
+		LabelsRaw:           "{}",
+		ProcessedAtUnixNano: 1735689600000000000,
 	})
 	if err == nil {
 		t.Fatal("expected wrapped repository error")

@@ -9,7 +9,6 @@ package v1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -23,15 +22,18 @@ const (
 )
 
 type TelemetryMessage struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	GpuId          string                 `protobuf:"bytes,1,opt,name=gpu_id,json=gpuId,proto3" json:"gpu_id,omitempty"`
-	HostId         string                 `protobuf:"bytes,2,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
-	Timestamp      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	GpuUtilization float64                `protobuf:"fixed64,4,opt,name=gpu_utilization,json=gpuUtilization,proto3" json:"gpu_utilization,omitempty"`
-	MemoryUsedMb   int64                  `protobuf:"varint,5,opt,name=memory_used_mb,json=memoryUsedMb,proto3" json:"memory_used_mb,omitempty"`
-	TemperatureC   float64                `protobuf:"fixed64,6,opt,name=temperature_c,json=temperatureC,proto3" json:"temperature_c,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	MetricName          string                 `protobuf:"bytes,1,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
+	GpuId               string                 `protobuf:"bytes,2,opt,name=gpu_id,json=gpuId,proto3" json:"gpu_id,omitempty"`
+	Device              string                 `protobuf:"bytes,3,opt,name=device,proto3" json:"device,omitempty"`
+	Uuid                string                 `protobuf:"bytes,4,opt,name=uuid,proto3" json:"uuid,omitempty"`
+	ModelName           string                 `protobuf:"bytes,5,opt,name=model_name,json=modelName,proto3" json:"model_name,omitempty"`
+	HostName            string                 `protobuf:"bytes,6,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
+	Value               float64                `protobuf:"fixed64,7,opt,name=value,proto3" json:"value,omitempty"`
+	LabelsRaw           string                 `protobuf:"bytes,8,opt,name=labels_raw,json=labelsRaw,proto3" json:"labels_raw,omitempty"`
+	ProcessedAtUnixNano int64                  `protobuf:"varint,9,opt,name=processed_at_unix_nano,json=processedAtUnixNano,proto3" json:"processed_at_unix_nano,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *TelemetryMessage) Reset() {
@@ -64,6 +66,13 @@ func (*TelemetryMessage) Descriptor() ([]byte, []int) {
 	return file_api_telemetry_v1_telemetry_proto_rawDescGZIP(), []int{0}
 }
 
+func (x *TelemetryMessage) GetMetricName() string {
+	if x != nil {
+		return x.MetricName
+	}
+	return ""
+}
+
 func (x *TelemetryMessage) GetGpuId() string {
 	if x != nil {
 		return x.GpuId
@@ -71,37 +80,51 @@ func (x *TelemetryMessage) GetGpuId() string {
 	return ""
 }
 
-func (x *TelemetryMessage) GetHostId() string {
+func (x *TelemetryMessage) GetDevice() string {
 	if x != nil {
-		return x.HostId
+		return x.Device
 	}
 	return ""
 }
 
-func (x *TelemetryMessage) GetTimestamp() *timestamppb.Timestamp {
+func (x *TelemetryMessage) GetUuid() string {
 	if x != nil {
-		return x.Timestamp
+		return x.Uuid
 	}
-	return nil
+	return ""
 }
 
-func (x *TelemetryMessage) GetGpuUtilization() float64 {
+func (x *TelemetryMessage) GetModelName() string {
 	if x != nil {
-		return x.GpuUtilization
+		return x.ModelName
+	}
+	return ""
+}
+
+func (x *TelemetryMessage) GetHostName() string {
+	if x != nil {
+		return x.HostName
+	}
+	return ""
+}
+
+func (x *TelemetryMessage) GetValue() float64 {
+	if x != nil {
+		return x.Value
 	}
 	return 0
 }
 
-func (x *TelemetryMessage) GetMemoryUsedMb() int64 {
+func (x *TelemetryMessage) GetLabelsRaw() string {
 	if x != nil {
-		return x.MemoryUsedMb
+		return x.LabelsRaw
 	}
-	return 0
+	return ""
 }
 
-func (x *TelemetryMessage) GetTemperatureC() float64 {
+func (x *TelemetryMessage) GetProcessedAtUnixNano() int64 {
 	if x != nil {
-		return x.TemperatureC
+		return x.ProcessedAtUnixNano
 	}
 	return 0
 }
@@ -110,14 +133,20 @@ var File_api_telemetry_v1_telemetry_proto protoreflect.FileDescriptor
 
 const file_api_telemetry_v1_telemetry_proto_rawDesc = "" +
 	"\n" +
-	" api/telemetry/v1/telemetry.proto\x12\ftelemetry.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf0\x01\n" +
-	"\x10TelemetryMessage\x12\x15\n" +
-	"\x06gpu_id\x18\x01 \x01(\tR\x05gpuId\x12\x17\n" +
-	"\ahost_id\x18\x02 \x01(\tR\x06hostId\x128\n" +
-	"\ttimestamp\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12'\n" +
-	"\x0fgpu_utilization\x18\x04 \x01(\x01R\x0egpuUtilization\x12$\n" +
-	"\x0ememory_used_mb\x18\x05 \x01(\x03R\fmemoryUsedMb\x12#\n" +
-	"\rtemperature_c\x18\x06 \x01(\x01R\ftemperatureCB)Z'telemetry-collector/gen/telemetry/v1;v1b\x06proto3"
+	" api/telemetry/v1/telemetry.proto\x12\ftelemetry.v1\"\x9c\x02\n" +
+	"\x10TelemetryMessage\x12\x1f\n" +
+	"\vmetric_name\x18\x01 \x01(\tR\n" +
+	"metricName\x12\x15\n" +
+	"\x06gpu_id\x18\x02 \x01(\tR\x05gpuId\x12\x16\n" +
+	"\x06device\x18\x03 \x01(\tR\x06device\x12\x12\n" +
+	"\x04uuid\x18\x04 \x01(\tR\x04uuid\x12\x1d\n" +
+	"\n" +
+	"model_name\x18\x05 \x01(\tR\tmodelName\x12\x1b\n" +
+	"\thost_name\x18\x06 \x01(\tR\bhostName\x12\x14\n" +
+	"\x05value\x18\a \x01(\x01R\x05value\x12\x1d\n" +
+	"\n" +
+	"labels_raw\x18\b \x01(\tR\tlabelsRaw\x123\n" +
+	"\x16processed_at_unix_nano\x18\t \x01(\x03R\x13processedAtUnixNanoB)Z'telemetry-collector/api/telemetry/v1;v1b\x06proto3"
 
 var (
 	file_api_telemetry_v1_telemetry_proto_rawDescOnce sync.Once
@@ -133,16 +162,14 @@ func file_api_telemetry_v1_telemetry_proto_rawDescGZIP() []byte {
 
 var file_api_telemetry_v1_telemetry_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_api_telemetry_v1_telemetry_proto_goTypes = []any{
-	(*TelemetryMessage)(nil),      // 0: telemetry.v1.TelemetryMessage
-	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
+	(*TelemetryMessage)(nil), // 0: telemetry.v1.TelemetryMessage
 }
 var file_api_telemetry_v1_telemetry_proto_depIdxs = []int32{
-	1, // 0: telemetry.v1.TelemetryMessage.timestamp:type_name -> google.protobuf.Timestamp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_api_telemetry_v1_telemetry_proto_init() }

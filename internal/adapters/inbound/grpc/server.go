@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	pb "telemetry-collector/gen/telemetry/v1"
+	pb "telemetry-collector/api/telemetry/v1"
 	app "telemetry-collector/internal/application/telemetry"
 )
 
