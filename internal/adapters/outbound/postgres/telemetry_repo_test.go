@@ -17,18 +17,18 @@ func TestNewTelemetryRepository(t *testing.T) {
 }
 
 func TestTelemetryRepositorySaveWrapsTransientError(t *testing.T) {
-	db := NewBunDB("postgres://postgres:postgres@localhost:5432/telemetry?sslmode=disable")
+	db := NewBunDB("postgres://telemetry:telemetry@localhost:5432/telemetry?sslmode=disable")
 	defer db.Close()
 
 	repo := NewTelemetryRepository(db)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer cancel()
 
 	err := repo.Save(ctx, domain.Telemetry{
 		MetricName:          "gpu.temperature",
 		GPUID:               "gpu-1",
 		Device:              "nvidia0",
-		UUID:                "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		UUID:                "6a87a232-6556-4386-a3c0-0db1fd9ee579",
 		ModelName:           "A100",
 		HostName:            "host-1",
 		Value:               40,

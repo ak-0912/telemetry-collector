@@ -10,7 +10,7 @@ func TestTelemetryValidate(t *testing.T) {
 		MetricName:          "gpu.temperature",
 		GPUID:               "gpu-1",
 		Device:              "nvidia0",
-		UUID:                "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		UUID:                "6a87a232-6556-4386-a3c0-0db1fd9ee579",
 		ModelName:           "A100",
 		HostName:            "host-1",
 		Value:               72.1,
@@ -31,7 +31,7 @@ func TestTelemetryValidate(t *testing.T) {
 func TestTelemetryValidateMissingGPUID(t *testing.T) {
 	err := Telemetry{
 		MetricName:          "gpu.temperature",
-		UUID:                "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		UUID:                "6a87a232-6556-4386-a3c0-0db1fd9ee579",
 		HostName:            "host-1",
 		ProcessedAtUnixNano: 1735689600000000000,
 	}.Validate()
@@ -55,7 +55,7 @@ func TestTelemetryValidateMissingUUID(t *testing.T) {
 func TestTelemetryValidateMissingMetricName(t *testing.T) {
 	err := Telemetry{
 		GPUID:               "gpu-1",
-		UUID:                "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		UUID:                "6a87a232-6556-4386-a3c0-0db1fd9ee579",
 		HostName:            "host-1",
 		ProcessedAtUnixNano: 1735689600000000000,
 	}.Validate()
@@ -68,7 +68,7 @@ func TestTelemetryValidateMissingProcessedAt(t *testing.T) {
 	err := Telemetry{
 		MetricName: "gpu.temperature",
 		GPUID:      "gpu-1",
-		UUID:       "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		UUID:       "6a87a232-6556-4386-a3c0-0db1fd9ee579",
 		HostName:   "host-1",
 	}.Validate()
 	if !errors.Is(err, ErrValidation) {

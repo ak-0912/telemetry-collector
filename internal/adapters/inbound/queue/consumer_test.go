@@ -39,7 +39,7 @@ func TestConsumerHandleMessageAckOnSuccess(t *testing.T) {
 	processor.EXPECT().Process(gomock.Any(), payload).Return(nil)
 	msg.EXPECT().Ack(gomock.Any()).Return(nil)
 
-	c.handleMessage(context.Background(), msg)
+	c.handleMessage(msg)
 }
 
 func TestConsumerHandleMessageValidationErrorToDLQ(t *testing.T) {
@@ -61,7 +61,7 @@ func TestConsumerHandleMessageValidationErrorToDLQ(t *testing.T) {
 	processor.EXPECT().Process(gomock.Any(), payload).Return(err)
 	msg.EXPECT().Reject(gomock.Any()).Return(nil)
 
-	c.handleMessage(context.Background(), msg)
+	c.handleMessage(msg)
 }
 
 func TestConsumerHandleMessageTransientRetries(t *testing.T) {
@@ -80,7 +80,7 @@ func TestConsumerHandleMessageTransientRetries(t *testing.T) {
 	processor.EXPECT().Process(gomock.Any(), payload).Return(domain.ErrTransient)
 	msg.EXPECT().Retry(gomock.Any(), retry.NewPolicy().BaseDelay).Return(nil)
 
-	c.handleMessage(context.Background(), msg)
+	c.handleMessage(msg)
 }
 
 func TestConsumerPollOnceSubmitsMessages(t *testing.T) {
@@ -132,7 +132,7 @@ func TestConsumerHandleMessageSystemErrorRetries(t *testing.T) {
 	processor.EXPECT().Process(gomock.Any(), payload).Return(domain.ErrSystem)
 	msg.EXPECT().Retry(gomock.Any(), retry.NewPolicy().BaseDelay).Return(nil)
 
-	c.handleMessage(context.Background(), msg)
+	c.handleMessage(msg)
 }
 
 func TestConsumerHandleMessageUnknownErrorRetries(t *testing.T) {
@@ -150,5 +150,5 @@ func TestConsumerHandleMessageUnknownErrorRetries(t *testing.T) {
 	processor.EXPECT().Process(gomock.Any(), payload).Return(errors.New("unexpected"))
 	msg.EXPECT().Retry(gomock.Any(), retry.NewPolicy().BaseDelay).Return(nil)
 
-	c.handleMessage(context.Background(), msg)
+	c.handleMessage(msg)
 }

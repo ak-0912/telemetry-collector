@@ -1,45 +1,22 @@
 version: "3.9"
 
 services:
-  postgres:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: telemetry
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@local.dev
-      PGADMIN_DEFAULT_PASSWORD: admin
-    depends_on:
-      - postgres
-    ports:
-      - "5050:80"
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-
   telemetry-collector:
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
     working_dir: /workspaces/telemetry-collector
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/telemetry?sslmode=disable
       WORKER_COUNT: 8
       QUEUE_BATCH_SIZE: 50
       POLL_INTERVAL: 2s
-    depends_on:
-      - postgres
+      DATABASE_URL: ${DATABASE_URL:-postgres://telemetry:telemetry@host.docker.internal:5433/telemetry?sslmode=disable}
+      PGPORT: "5433"
+      PGUSER: telemetry
+      PGPASSWORD: telemetry
+      PGDATABASE: telemetry
     volumes:
       - ..:/workspaces/telemetry-collector:cached
     command: sleep infinity
-
-volumes:
-  pgdata:
-  pgadmin-data:

@@ -10,7 +10,7 @@ func TestToInput(t *testing.T) {
 		MetricName:          "gpu.temperature",
 		GpuId:               "gpu-1",
 		Device:              "nvidia0",
-		Uuid:                "d083db3f-88d3-4714-bcff-e0a4e95d709f",
+		Uuid:                "6a87a232-6556-4386-a3c0-0db1fd9ee579",
 		ModelName:           "A100",
 		HostName:            "node-1",
 		Value:               70.5,
@@ -19,7 +19,7 @@ func TestToInput(t *testing.T) {
 	}
 
 	in := ToInput(msg)
-	if in.MetricName != "gpu.temperature" || in.GPUID != "gpu-1" || in.UUID != "d083db3f-88d3-4714-bcff-e0a4e95d709f" {
+	if in.MetricName != "gpu.temperature" || in.GPUID != "gpu-1" || in.UUID != "6a87a232-6556-4386-a3c0-0db1fd9ee579" {
 		t.Fatalf("unexpected core mapping: %+v", in)
 	}
 	if in.Device != "nvidia0" || in.ModelName != "A100" || in.HostName != "node-1" {

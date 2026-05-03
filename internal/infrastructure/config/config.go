@@ -13,9 +13,16 @@ type Config struct {
 	PollInterval   time.Duration
 }
 
+func resolvePostgresDSN() string {
+	if v := os.Getenv("DATABASE_URL"); v != "" {
+		return v
+	}
+	return getenv("POSTGRES_DSN", "postgres://telemetry:telemetry@host.docker.internal:5433/telemetry?sslmode=disable")
+}
+
 func Load() Config {
 	return Config{
-		PostgresDSN:    getenv("POSTGRES_DSN", "postgres://postgres:postgres@localhost:5432/telemetry?sslmode=disable"),
+		PostgresDSN:    resolvePostgresDSN(),
 		WorkerCount:    getenvInt("WORKER_COUNT", 8),
 		QueueBatchSize: getenvInt("QUEUE_BATCH_SIZE", 50),
 		PollInterval:   getenvDuration("POLL_INTERVAL", "2s"),

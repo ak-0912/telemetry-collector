@@ -69,25 +69,30 @@ func (c *Consumer) pollOnce(ctx context.Context) {
 
 	for _, msg := range msgs {
 		message := msg
-		c.workers.Submit(func() { c.handleMessage(ctx, message) })
+		c.workers.Submit(func() { c.handleMessage(message) })
 	}
 }
 
-func (c *Consumer) handleMessage(ctx context.Context, msg Message) {
-	err := c.processor.Process(ctx, msg.Body())
+// handleMessage uses [context.Background] for persistence and ack/retry so a
+// stopped consumer (lifecycle cancel) does not cancel in-flight DB writes.
+func (c *Consumer) handleMessage(msg Message) {
+	workCtx := context.Background()
+	err := c.processor.Process(workCtx, msg.Body())
 	if err == nil {
-		_ = msg.Ack(ctx)
+		_ = msg.Ack(workCtx)
 		return
 	}
 
+	log.Printf("telemetry message processing failed: %v", err)
+
 	switch {
 	case domain.IsValidationError(err):
-		_ = c.dlq.Publish(ctx, msg.Body(), err.Error())
-		_ = msg.Reject(ctx)
+		_ = c.dlq.Publish(workCtx, msg.Body(), err.Error())
+		_ = msg.Reject(workCtx)
 	case domain.IsTransientError(err) || errors.Is(err, domain.ErrSystem):
 		delay := c.retryPolicy.NextDelay(1)
-		_ = msg.Retry(ctx, delay)
+		_ = msg.Retry(workCtx, delay)
 	default:
-		_ = msg.Retry(ctx, c.retryPolicy.NextDelay(1))
+		_ = msg.Retry(workCtx, c.retryPolicy.NextDelay(1))
 	}
 }

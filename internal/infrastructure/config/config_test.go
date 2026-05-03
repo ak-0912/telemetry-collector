@@ -7,6 +7,7 @@ import (
 )
 
 func TestLoadReadsEnvAndFallbacks(t *testing.T) {
+	t.Setenv("DATABASE_URL", "")
 	t.Setenv("POSTGRES_DSN", "postgres://x")
 	t.Setenv("WORKER_COUNT", "3")
 	t.Setenv("QUEUE_BATCH_SIZE", "10")
@@ -15,6 +16,20 @@ func TestLoadReadsEnvAndFallbacks(t *testing.T) {
 	cfg := Load()
 	if cfg.PostgresDSN != "postgres://x" || cfg.WorkerCount != 3 || cfg.QueueBatchSize != 10 || cfg.PollInterval != 5*time.Second {
 		t.Fatalf("unexpected config: %+v", cfg)
+	}
+}
+
+func TestLoadPrefersDatabaseURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://telemetry:telemetry@host.docker.internal:5433/telemetry?sslmode=disable")
+	t.Setenv("POSTGRES_DSN", "postgres://ignored")
+	t.Setenv("WORKER_COUNT", "1")
+	t.Setenv("QUEUE_BATCH_SIZE", "1")
+	t.Setenv("POLL_INTERVAL", "1s")
+
+	cfg := Load()
+	want := "postgres://telemetry:telemetry@host.docker.internal:5433/telemetry?sslmode=disable"
+	if cfg.PostgresDSN != want {
+		t.Fatalf("expected DATABASE_URL, got %q", cfg.PostgresDSN)
 	}
 }
 

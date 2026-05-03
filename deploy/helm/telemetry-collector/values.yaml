@@ -9,7 +9,7 @@ env:
   workerCount: "8"
   queueBatchSize: "50"
   pollInterval: "2s"
-  postgresDsn: "postgres://postgres:postgres@postgres:5432/telemetry?sslmode=disable"
+  postgresDsn: "postgres://telemetry:telemetry@postgres:5432/telemetry?sslmode=disable"
 
 resources:
   requests:
