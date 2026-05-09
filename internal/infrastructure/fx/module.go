@@ -2,9 +2,10 @@ package fxmodule
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strings"
 
-	inboundgrpc "telemetry-collector/internal/adapters/inbound/grpc"
 	"telemetry-collector/internal/adapters/inbound/queue"
 	"telemetry-collector/internal/adapters/outbound/dlq"
 	"telemetry-collector/internal/adapters/outbound/postgres"
@@ -29,11 +30,13 @@ func Module() fx.Option {
 				fx.As(new(app.TelemetryRepository)),
 			),
 			app.NewProcessUseCase,
-			inboundgrpc.NewProcessor,
 			dlq.NewProducer,
-			queue.NewMockClient,
+			provideQueueClient,
+			queue.NewProtoProcessor,
 			provideConsumer,
 		),
+		// OnStop runs in reverse order: consumer stops before queue Close().
+		fx.Invoke(registerQueueClientClose),
 		fx.Invoke(runConsumer),
 	)
 }
@@ -46,10 +49,52 @@ func provideBunDB(cfg config.Config) *bun.DB {
 	return postgres.NewBunDB(cfg.PostgresDSN)
 }
 
+func provideQueueClient(cfg config.Config) (queue.Client, error) {
+	backend := strings.TrimSpace(cfg.QueueBackend)
+	if strings.EqualFold(backend, "grpc") {
+		if strings.TrimSpace(cfg.MQGRPCAddr) == "" {
+			return nil, fmt.Errorf("QUEUE_BACKEND=grpc requires MQ_GRPC_ADDR")
+		}
+		c, err := queue.NewGRPCMQClient(cfg)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("queue client: grpc backend %s topic=%q group=%q", cfg.MQGRPCAddr, cfg.MQTopic, cfg.MQGroup)
+		return c, nil
+	}
+	if strings.EqualFold(backend, "http") && strings.TrimSpace(cfg.MQHTTPBase) != "" {
+		c, err := queue.NewHTTPClient(cfg)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("queue client: http backend %s (pull %s, ack %s)", cfg.MQHTTPBase, cfg.MQHTTPPullPath, cfg.MQHTTPAckPath)
+		return c, nil
+	}
+	if strings.EqualFold(backend, "http") {
+		log.Printf("queue client: QUEUE_BACKEND=http but MQ_HTTP_BASE empty; using mock queue")
+	}
+	return queue.NewMockClient(), nil
+}
+
+func registerQueueClientClose(lc fx.Lifecycle, c queue.Client) {
+	type closer interface {
+		Close() error
+	}
+	gc, ok := c.(closer)
+	if !ok {
+		return
+	}
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			return gc.Close()
+		},
+	})
+}
+
 func provideConsumer(
 	cfg config.Config,
-	client *queue.MockClient,
-	processor *inboundgrpc.Processor,
+	client queue.Client,
+	processor *queue.ProtoProcessor,
 	dlq *dlq.Producer,
 	workers *workerpool.Pool,
 	policy retry.Policy,

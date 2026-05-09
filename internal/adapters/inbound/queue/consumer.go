@@ -6,10 +6,13 @@ import (
 	"log"
 	"time"
 
+	telemetryv1 "telemetry-collector/api/telemetry/v1"
 	app "telemetry-collector/internal/application/telemetry"
 	domain "telemetry-collector/internal/domain/telemetry"
 	"telemetry-collector/internal/infrastructure/retry"
 	"telemetry-collector/internal/infrastructure/workerpool"
+
+	"google.golang.org/protobuf/proto"
 )
 
 type Processor interface {
@@ -66,6 +69,9 @@ func (c *Consumer) pollOnce(ctx context.Context) {
 		log.Printf("queue pull failed: %v", err)
 		return
 	}
+	if len(msgs) > 0 {
+		log.Printf("queue pull succeeded: fetched=%d", len(msgs))
+	}
 
 	for _, msg := range msgs {
 		message := msg
@@ -77,13 +83,22 @@ func (c *Consumer) pollOnce(ctx context.Context) {
 // stopped consumer (lifecycle cancel) does not cancel in-flight DB writes.
 func (c *Consumer) handleMessage(msg Message) {
 	workCtx := context.Background()
-	err := c.processor.Process(workCtx, msg.Body())
+	body := msg.Body()
+	metricName, uuid := traceFieldsFromPayload(body)
+	log.Printf("queue message received: payload_bytes=%d metric_name=%q uuid=%q", len(body), metricName, uuid)
+
+	err := c.processor.Process(workCtx, body)
 	if err == nil {
-		_ = msg.Ack(workCtx)
+		log.Printf("queue message processed and saved to db: payload_bytes=%d metric_name=%q uuid=%q", len(body), metricName, uuid)
+		if ackErr := msg.Ack(workCtx); ackErr != nil {
+			log.Printf("queue ack failed: payload_bytes=%d metric_name=%q uuid=%q err=%v", len(body), metricName, uuid, ackErr)
+		} else {
+			log.Printf("queue ack succeeded: payload_bytes=%d metric_name=%q uuid=%q", len(body), metricName, uuid)
+		}
 		return
 	}
 
-	log.Printf("telemetry message processing failed: %v", err)
+	log.Printf("telemetry message processing failed: metric_name=%q uuid=%q err=%v", metricName, uuid, err)
 
 	switch {
 	case domain.IsValidationError(err):
@@ -95,4 +110,20 @@ func (c *Consumer) handleMessage(msg Message) {
 	default:
 		_ = msg.Retry(workCtx, c.retryPolicy.NextDelay(1))
 	}
+}
+
+func traceFieldsFromPayload(payload []byte) (metricName, uuid string) {
+	var tm telemetryv1.TelemetryMessage
+	if err := proto.Unmarshal(payload, &tm); err != nil {
+		return "unknown", "unknown"
+	}
+	metricName = tm.GetMetricName()
+	uuid = tm.GetUuid()
+	if metricName == "" {
+		metricName = "unknown"
+	}
+	if uuid == "" {
+		uuid = "unknown"
+	}
+	return metricName, uuid
 }

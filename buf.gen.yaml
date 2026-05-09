@@ -4,3 +4,7 @@ plugins:
     out: .
     opt:
       - module=telemetry-collector
+  - plugin: buf.build/grpc/go
+    out: .
+    opt:
+      - module=telemetry-collector

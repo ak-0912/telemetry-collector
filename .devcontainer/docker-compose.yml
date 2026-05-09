@@ -12,6 +12,19 @@ services:
       WORKER_COUNT: 8
       QUEUE_BATCH_SIZE: 50
       POLL_INTERVAL: 2s
+      # telemetry-message-queue (separate compose): gRPC; HTTP in container :8080 → host :9002
+      MQ_GRPC_PORT: ${MQ_GRPC_PORT:-50051}
+      MQ_GRPC_ADDR: ${MQ_GRPC_ADDR:-host.docker.internal:${MQ_GRPC_PORT:-50051}}
+      # Avoid unreachable IPv6 for host.docker.internal on some Docker networks (dial tcp4).
+      MQ_GRPC_PREFER_IPV4: ${MQ_GRPC_PREFER_IPV4:-1}
+      MQ_HTTP_BASE: ${MQ_HTTP_BASE:-http://host.docker.internal:9002}
+      # mock | http | grpc — defaults below match local MQ + Postgres on host (override via .devcontainer/.env)
+      QUEUE_BACKEND: ${QUEUE_BACKEND:-grpc}
+      MQ_TOPIC: ${MQ_TOPIC:-gpu-telemetry}
+      MQ_GROUP: ${MQ_GROUP:-telemetry-collector}
+      MQ_HEARTBEAT_INTERVAL: ${MQ_HEARTBEAT_INTERVAL:-3s}
+      MQ_HTTP_PULL_PATH: ${MQ_HTTP_PULL_PATH:-/pull}
+      MQ_HTTP_ACK_PATH: ${MQ_HTTP_ACK_PATH:-/ack}
       DATABASE_URL: ${DATABASE_URL:-postgres://telemetry:telemetry@host.docker.internal:5433/telemetry?sslmode=disable}
       PGPORT: "5433"
       PGUSER: telemetry

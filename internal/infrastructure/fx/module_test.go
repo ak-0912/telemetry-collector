@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	inboundgrpc "telemetry-collector/internal/adapters/inbound/grpc"
 	"telemetry-collector/internal/adapters/inbound/queue"
 	"telemetry-collector/internal/adapters/outbound/dlq"
 	app "telemetry-collector/internal/application/telemetry"
@@ -38,7 +37,7 @@ func TestProvideWorkerPool(t *testing.T) {
 
 func TestProvideConsumer(t *testing.T) {
 	cfg := config.Config{QueueBatchSize: 3, PollInterval: time.Second}
-	c := provideConsumer(cfg, nil, nil, nil, nil, retry.NewPolicy())
+	c := provideConsumer(cfg, queue.NewMockClient(), nil, nil, nil, retry.NewPolicy())
 	if c == nil {
 		t.Fatal("expected consumer")
 	}
@@ -49,7 +48,7 @@ func TestRunConsumerLifecycleHooks(t *testing.T) {
 	workers := provideWorkerPool(config.Config{WorkerCount: 1})
 
 	useCase := app.NewProcessUseCase(fakeRepo{})
-	processor := inboundgrpc.NewProcessor(useCase)
+	processor := queue.NewProtoProcessor(useCase)
 	consumer := provideConsumer(cfg, queue.NewMockClient(), processor, dlq.NewProducer(), workers, retry.NewPolicy())
 
 	lc := &fakeLifecycle{}
