@@ -24,7 +24,7 @@ Telemetry Collector consumes telemetry from the custom queue and persists it. Th
 
 ## Local Development
 
-- Build: `make build`
+- Build: `make build` (writes `out/collector` by default; use `make build BUILD_DIR=bin` if you prefer `bin/`)
 - Run with containers: `make run`
 - Stop containers: `make stop`
 - Unit tests: `make test`

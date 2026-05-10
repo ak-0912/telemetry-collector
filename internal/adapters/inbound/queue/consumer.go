@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strconv"
+	"sync"
 	"time"
 
 	telemetryv1 "telemetry-collector/api/telemetry/v1"
@@ -27,6 +29,7 @@ type Consumer struct {
 	pollInterval time.Duration
 	workers      *workerpool.Pool
 	retryPolicy  retry.Policy
+	deduper      *messageDeduper
 }
 
 func NewConsumer(
@@ -46,6 +49,7 @@ func NewConsumer(
 		pollInterval: pollInterval,
 		workers:      workers,
 		retryPolicy:  retryPolicy,
+		deduper:      newMessageDeduper(10 * time.Minute),
 	}
 }
 
@@ -84,11 +88,21 @@ func (c *Consumer) pollOnce(ctx context.Context) {
 func (c *Consumer) handleMessage(msg Message) {
 	workCtx := context.Background()
 	body := msg.Body()
-	metricName, uuid := traceFieldsFromPayload(body)
+	metricName, uuid, processedAtUnixNano := traceFieldsFromPayload(body)
 	log.Printf("queue message received: payload_bytes=%d metric_name=%q uuid=%q", len(body), metricName, uuid)
+	if key := idempotencyKey(metricName, uuid, processedAtUnixNano); key != "" && c.deduper.Seen(key) {
+		log.Printf("queue duplicate skipped: payload_bytes=%d metric_name=%q uuid=%q processed_at_unix_nano=%d", len(body), metricName, uuid, processedAtUnixNano)
+		if ackErr := msg.Ack(workCtx); ackErr != nil {
+			log.Printf("queue ack failed for duplicate: payload_bytes=%d metric_name=%q uuid=%q err=%v", len(body), metricName, uuid, ackErr)
+		}
+		return
+	}
 
 	err := c.processor.Process(workCtx, body)
 	if err == nil {
+		if key := idempotencyKey(metricName, uuid, processedAtUnixNano); key != "" {
+			c.deduper.Add(key)
+		}
 		log.Printf("queue message processed and saved to db: payload_bytes=%d metric_name=%q uuid=%q", len(body), metricName, uuid)
 		if ackErr := msg.Ack(workCtx); ackErr != nil {
 			log.Printf("queue ack failed: payload_bytes=%d metric_name=%q uuid=%q err=%v", len(body), metricName, uuid, ackErr)
@@ -112,18 +126,74 @@ func (c *Consumer) handleMessage(msg Message) {
 	}
 }
 
-func traceFieldsFromPayload(payload []byte) (metricName, uuid string) {
+func traceFieldsFromPayload(payload []byte) (metricName, uuid string, processedAtUnixNano int64) {
 	var tm telemetryv1.TelemetryMessage
 	if err := proto.Unmarshal(payload, &tm); err != nil {
-		return "unknown", "unknown"
+		return "unknown", "unknown", 0
 	}
 	metricName = tm.GetMetricName()
 	uuid = tm.GetUuid()
+	processedAtUnixNano = tm.GetProcessedAtUnixNano()
 	if metricName == "" {
 		metricName = "unknown"
 	}
 	if uuid == "" {
 		uuid = "unknown"
 	}
-	return metricName, uuid
+	return metricName, uuid, processedAtUnixNano
+}
+
+func idempotencyKey(metricName, uuid string, processedAtUnixNano int64) string {
+	if metricName == "" || metricName == "unknown" || uuid == "" || uuid == "unknown" || processedAtUnixNano <= 0 {
+		return ""
+	}
+	return metricName + "\x00" + uuid + "\x00" + strconv.FormatInt(processedAtUnixNano, 10)
+}
+
+type messageDeduper struct {
+	mu    sync.Mutex
+	ttl   time.Duration
+	seen  map[string]time.Time
+	sweep int
+}
+
+func newMessageDeduper(ttl time.Duration) *messageDeduper {
+	return &messageDeduper{
+		ttl:  ttl,
+		seen: make(map[string]time.Time),
+	}
+}
+
+func (d *messageDeduper) Seen(key string) bool {
+	if key == "" {
+		return false
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.maybeSweepLocked(time.Now())
+	exp, ok := d.seen[key]
+	return ok && exp.After(time.Now())
+}
+
+func (d *messageDeduper) Add(key string) {
+	if key == "" {
+		return
+	}
+	now := time.Now()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.seen[key] = now.Add(d.ttl)
+	d.maybeSweepLocked(now)
+}
+
+func (d *messageDeduper) maybeSweepLocked(now time.Time) {
+	d.sweep++
+	if d.sweep%256 != 0 {
+		return
+	}
+	for k, exp := range d.seen {
+		if !exp.After(now) {
+			delete(d.seen, k)
+		}
+	}
 }

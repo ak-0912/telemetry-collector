@@ -6,12 +6,14 @@ import (
 	"testing"
 	"time"
 
+	telemetryv1 "telemetry-collector/api/telemetry/v1"
 	app "telemetry-collector/internal/application/telemetry"
 	domain "telemetry-collector/internal/domain/telemetry"
 	"telemetry-collector/internal/infrastructure/retry"
 	"telemetry-collector/internal/infrastructure/workerpool"
 
 	"github.com/golang/mock/gomock"
+	"google.golang.org/protobuf/proto"
 )
 
 type fakeDLQ struct{}
@@ -151,4 +153,42 @@ func TestConsumerHandleMessageUnknownErrorRetries(t *testing.T) {
 	msg.EXPECT().Retry(gomock.Any(), retry.NewPolicy().BaseDelay).Return(nil)
 
 	c.handleMessage(msg)
+}
+
+func TestConsumerHandleMessageSkipsDuplicateByIdempotencyKey(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := NewMockQueueClient(ctrl)
+	processor := NewMockProcessor(ctrl)
+	dlq := fakeDLQ{}
+	msg1 := NewMockQueueMessage(ctrl)
+	msg2 := NewMockQueueMessage(ctrl)
+	c := newTestConsumer(t, client, processor, dlq)
+	defer c.workers.Close()
+
+	payload, err := proto.Marshal(&telemetryv1.TelemetryMessage{
+		MetricName:          "gpu.temperature",
+		GpuId:               "gpu-1",
+		Device:              "nvidia0",
+		Uuid:                "6a87a232-6556-4386-a3c0-0db1fd9ee579",
+		ModelName:           "A100",
+		HostName:            "host-1",
+		Value:               65.5,
+		LabelsRaw:           "{}",
+		ProcessedAtUnixNano: 1735689600000000000,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg1.EXPECT().Body().Return(payload).Times(1)
+	processor.EXPECT().Process(gomock.Any(), payload).Return(nil).Times(1)
+	msg1.EXPECT().Ack(gomock.Any()).Return(nil).Times(1)
+
+	msg2.EXPECT().Body().Return(payload).Times(1)
+	msg2.EXPECT().Ack(gomock.Any()).Return(nil).Times(1)
+
+	c.handleMessage(msg1)
+	c.handleMessage(msg2)
 }
