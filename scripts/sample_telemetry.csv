@@ -1,2 +1,0 @@
-metric_name,gpu_id,device,uuid,model_name,host_name,value,labels_raw,processed_at_unix_nano
-gpu.temperature,gpu-1,nvidia0,a0b1c2d3-e4f5-4678-9abc-def012345678,A100,csv-sample-host,71.2,{},1735689600000000000

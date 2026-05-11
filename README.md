@@ -30,6 +30,12 @@ Telemetry Collector consumes telemetry from the custom queue and persists it. Th
 - Unit tests: `make test`
 - Test coverage: `make test-coverage`
 
+## Helm Deployment
+
+```bash
+helm upgrade --install telemetry-collector ./helm/telemetry-collector -n telemetry
+```
+
 ## Protobuf
 
 - Proto schema lives in `api/telemetry/v1/telemetry.proto`.
