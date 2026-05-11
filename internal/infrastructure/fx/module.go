@@ -1,3 +1,4 @@
+// Package fxmodule wires the dependency injection graph using Uber Fx.
 package fxmodule
 
 import (
@@ -18,6 +19,7 @@ import (
 	"go.uber.org/fx"
 )
 
+// Module returns the root Fx option that provides all collector dependencies.
 func Module() fx.Option {
 	return fx.Options(
 		fx.Provide(
@@ -35,7 +37,6 @@ func Module() fx.Option {
 			queue.NewProtoProcessor,
 			provideConsumer,
 		),
-		// OnStop runs in reverse order: consumer stops before queue Close().
 		fx.Invoke(registerQueueClientClose),
 		fx.Invoke(runConsumer),
 	)
@@ -51,7 +52,9 @@ func provideBunDB(cfg config.Config) *bun.DB {
 
 func provideQueueClient(cfg config.Config) (queue.Client, error) {
 	backend := strings.TrimSpace(cfg.QueueBackend)
-	if strings.EqualFold(backend, "grpc") {
+
+	switch {
+	case strings.EqualFold(backend, "grpc"):
 		if strings.TrimSpace(cfg.MQGRPCAddr) == "" {
 			return nil, fmt.Errorf("QUEUE_BACKEND=grpc requires MQ_GRPC_ADDR")
 		}
@@ -59,23 +62,28 @@ func provideQueueClient(cfg config.Config) (queue.Client, error) {
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("queue client: grpc backend %s topic=%q group=%q", cfg.MQGRPCAddr, cfg.MQTopic, cfg.MQGroup)
+		log.Printf("queue: backend=grpc addr=%s topic=%q group=%q", cfg.MQGRPCAddr, cfg.MQTopic, cfg.MQGroup)
 		return c, nil
-	}
-	if strings.EqualFold(backend, "http") && strings.TrimSpace(cfg.MQHTTPBase) != "" {
+
+	case strings.EqualFold(backend, "http"):
+		if strings.TrimSpace(cfg.MQHTTPBase) == "" {
+			log.Printf("queue: backend=http but MQ_HTTP_BASE empty; falling back to mock")
+			return queue.NewMockClient(), nil
+		}
 		c, err := queue.NewHTTPClient(cfg)
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("queue client: http backend %s (pull %s, ack %s)", cfg.MQHTTPBase, cfg.MQHTTPPullPath, cfg.MQHTTPAckPath)
+		log.Printf("queue: backend=http base=%s pull=%s ack=%s", cfg.MQHTTPBase, cfg.MQHTTPPullPath, cfg.MQHTTPAckPath)
 		return c, nil
+
+	default:
+		log.Printf("queue: backend=mock")
+		return queue.NewMockClient(), nil
 	}
-	if strings.EqualFold(backend, "http") {
-		log.Printf("queue client: QUEUE_BACKEND=http but MQ_HTTP_BASE empty; using mock queue")
-	}
-	return queue.NewMockClient(), nil
 }
 
+// registerQueueClientClose ensures the gRPC/HTTP client is closed on shutdown.
 func registerQueueClientClose(lc fx.Lifecycle, c queue.Client) {
 	type closer interface {
 		Close() error
@@ -105,14 +113,15 @@ func provideConsumer(
 func runConsumer(lc fx.Lifecycle, c *queue.Consumer, workers *workerpool.Pool) {
 	var cancel context.CancelFunc
 	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			log.Println("starting telemetry consumer")
+		OnStart: func(context.Context) error {
+			log.Println("consumer: starting telemetry consumer loop")
 			runCtx, stop := context.WithCancel(context.Background())
 			cancel = stop
 			go c.Start(runCtx)
 			return nil
 		},
 		OnStop: func(context.Context) error {
+			log.Println("consumer: shutting down")
 			if cancel != nil {
 				cancel()
 			}

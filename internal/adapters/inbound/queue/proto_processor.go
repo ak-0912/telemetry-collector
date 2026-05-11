@@ -10,16 +10,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// ProtoProcessor handles queue payloads that are wire-encoded TelemetryMessage protobufs.
-// It intentionally treats labels_raw as an opaque string and uses msg.Value directly.
+// ProtoProcessor implements [Processor] for wire-encoded
+// telemetry.v1.TelemetryMessage protobuf payloads.
 type ProtoProcessor struct {
 	useCase *app.ProcessUseCase
 }
 
+// NewProtoProcessor constructs a processor backed by the given use case.
 func NewProtoProcessor(useCase *app.ProcessUseCase) *ProtoProcessor {
 	return &ProtoProcessor{useCase: useCase}
 }
 
+// Process unmarshals a protobuf TelemetryMessage and delegates to the use case.
 func (p *ProtoProcessor) Process(ctx context.Context, payload []byte) error {
 	var msg telemetryv1.TelemetryMessage
 	if err := proto.Unmarshal(payload, &msg); err != nil {

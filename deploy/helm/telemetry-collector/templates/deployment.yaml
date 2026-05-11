@@ -25,5 +25,15 @@ spec:
               value: {{ .Values.env.queueBatchSize | quote }}
             - name: POLL_INTERVAL
               value: {{ .Values.env.pollInterval | quote }}
+            - name: QUEUE_BACKEND
+              value: {{ .Values.env.queueBackend | quote }}
+            - name: MQ_GRPC_ADDR
+              value: {{ .Values.env.mqGrpcAddr | quote }}
+            - name: MQ_TOPIC
+              value: {{ .Values.env.mqTopic | quote }}
+            - name: MQ_GROUP
+              value: {{ .Values.env.mqGroup | quote }}
+            - name: MQ_HEARTBEAT_INTERVAL
+              value: {{ .Values.env.mqHeartbeatInterval | quote }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

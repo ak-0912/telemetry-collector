@@ -1,5 +1,8 @@
 package telemetry
 
+// Input is the application-layer DTO for a single telemetry data point.
+// It decouples inbound adapter formats (protobuf, CSV, Prometheus) from the
+// domain model.
 type Input struct {
 	MetricName          string
 	GPUID               string

@@ -17,10 +17,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Processor decodes a raw queue payload and persists the result.
 type Processor interface {
 	Process(ctx context.Context, payload []byte) error
 }
 
+// Consumer polls a queue Client on a fixed interval, fans messages out to a
+// worker pool, and drives the ack / retry / DLQ lifecycle for each message.
 type Consumer struct {
 	client       Client
 	processor    Processor
@@ -32,6 +35,7 @@ type Consumer struct {
 	deduper      *messageDeduper
 }
 
+// NewConsumer wires together the queue consumer with all its dependencies.
 func NewConsumer(
 	client Client,
 	processor Processor,
@@ -53,6 +57,7 @@ func NewConsumer(
 	}
 }
 
+// Start blocks until ctx is cancelled, polling the queue on each tick.
 func (c *Consumer) Start(ctx context.Context) {
 	ticker := time.NewTicker(c.pollInterval)
 	defer ticker.Stop()
@@ -89,11 +94,13 @@ func (c *Consumer) handleMessage(msg Message) {
 	workCtx := context.Background()
 	body := msg.Body()
 	metricName, uuid, processedAtUnixNano := traceFieldsFromPayload(body)
+
 	log.Printf("queue message received: payload_bytes=%d metric_name=%q uuid=%q", len(body), metricName, uuid)
+
 	if key := idempotencyKey(metricName, uuid, processedAtUnixNano); key != "" && c.deduper.Seen(key) {
-		log.Printf("queue duplicate skipped: payload_bytes=%d metric_name=%q uuid=%q processed_at_unix_nano=%d", len(body), metricName, uuid, processedAtUnixNano)
+		log.Printf("queue duplicate skipped: metric_name=%q uuid=%q processed_at_unix_nano=%d", metricName, uuid, processedAtUnixNano)
 		if ackErr := msg.Ack(workCtx); ackErr != nil {
-			log.Printf("queue ack failed for duplicate: payload_bytes=%d metric_name=%q uuid=%q err=%v", len(body), metricName, uuid, ackErr)
+			log.Printf("queue ack failed (duplicate): metric_name=%q uuid=%q err=%v", metricName, uuid, ackErr)
 		}
 		return
 	}
@@ -103,26 +110,33 @@ func (c *Consumer) handleMessage(msg Message) {
 		if key := idempotencyKey(metricName, uuid, processedAtUnixNano); key != "" {
 			c.deduper.Add(key)
 		}
-		log.Printf("queue message processed and saved to db: payload_bytes=%d metric_name=%q uuid=%q", len(body), metricName, uuid)
+		log.Printf("queue message saved: metric_name=%q uuid=%q", metricName, uuid)
 		if ackErr := msg.Ack(workCtx); ackErr != nil {
-			log.Printf("queue ack failed: payload_bytes=%d metric_name=%q uuid=%q err=%v", len(body), metricName, uuid, ackErr)
-		} else {
-			log.Printf("queue ack succeeded: payload_bytes=%d metric_name=%q uuid=%q", len(body), metricName, uuid)
+			log.Printf("queue ack failed: metric_name=%q uuid=%q err=%v", metricName, uuid, ackErr)
 		}
 		return
 	}
 
-	log.Printf("telemetry message processing failed: metric_name=%q uuid=%q err=%v", metricName, uuid, err)
+	log.Printf("queue message processing failed: metric_name=%q uuid=%q err=%v", metricName, uuid, err)
 
 	switch {
 	case domain.IsValidationError(err):
-		_ = c.dlq.Publish(workCtx, msg.Body(), err.Error())
-		_ = msg.Reject(workCtx)
+		if pubErr := c.dlq.Publish(workCtx, msg.Body(), err.Error()); pubErr != nil {
+			log.Printf("dlq publish failed: metric_name=%q uuid=%q err=%v", metricName, uuid, pubErr)
+		}
+		if rejErr := msg.Reject(workCtx); rejErr != nil {
+			log.Printf("queue reject failed: metric_name=%q uuid=%q err=%v", metricName, uuid, rejErr)
+		}
 	case domain.IsTransientError(err) || errors.Is(err, domain.ErrSystem):
 		delay := c.retryPolicy.NextDelay(1)
-		_ = msg.Retry(workCtx, delay)
+		if retryErr := msg.Retry(workCtx, delay); retryErr != nil {
+			log.Printf("queue retry failed: metric_name=%q uuid=%q err=%v", metricName, uuid, retryErr)
+		}
 	default:
-		_ = msg.Retry(workCtx, c.retryPolicy.NextDelay(1))
+		delay := c.retryPolicy.NextDelay(1)
+		if retryErr := msg.Retry(workCtx, delay); retryErr != nil {
+			log.Printf("queue retry failed: metric_name=%q uuid=%q err=%v", metricName, uuid, retryErr)
+		}
 	}
 }
 
@@ -150,6 +164,8 @@ func idempotencyKey(metricName, uuid string, processedAtUnixNano int64) string {
 	return metricName + "\x00" + uuid + "\x00" + strconv.FormatInt(processedAtUnixNano, 10)
 }
 
+// messageDeduper is a TTL-based in-memory set that prevents re-processing of
+// recently seen messages (keyed on metric_name + uuid + processed_at_unix_nano).
 type messageDeduper struct {
 	mu    sync.Mutex
 	ttl   time.Duration
@@ -164,6 +180,7 @@ func newMessageDeduper(ttl time.Duration) *messageDeduper {
 	}
 }
 
+// Seen reports whether key has been recorded within the TTL window.
 func (d *messageDeduper) Seen(key string) bool {
 	if key == "" {
 		return false
@@ -175,6 +192,7 @@ func (d *messageDeduper) Seen(key string) bool {
 	return ok && exp.After(time.Now())
 }
 
+// Add records key with the configured TTL.
 func (d *messageDeduper) Add(key string) {
 	if key == "" {
 		return

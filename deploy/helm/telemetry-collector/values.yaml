@@ -1,3 +1,5 @@
+fullnameOverride: telemetry-collector
+
 replicaCount: 2
 
 image:
@@ -9,7 +11,14 @@ env:
   workerCount: "8"
   queueBatchSize: "50"
   pollInterval: "2s"
-  postgresDsn: "postgres://telemetry:telemetry@postgres:5432/telemetry?sslmode=disable"
+  postgresDsn: "postgres://telemetry:telemetry@telemetry-db-postgres:5432/telemetry?sslmode=disable"
+  # mock | http | grpc — must match collector config (see internal/infrastructure/config).
+  queueBackend: grpc
+  # host:port only (no grpc://); Kubernetes Service DNS for your MQ pod.
+  mqGrpcAddr: telemetry-message-queue.telemetry.svc.cluster.local:50051
+  mqTopic: gpu-telemetry
+  mqGroup: telemetry-collector
+  mqHeartbeatInterval: 3s
 
 resources:
   requests:

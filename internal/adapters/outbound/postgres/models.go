@@ -6,6 +6,7 @@ import (
 	"github.com/uptrace/bun"
 )
 
+// TelemetryModel is the Bun ORM mapping for the "telemetry" table.
 type TelemetryModel struct {
 	bun.BaseModel `bun:"table:telemetry"`
 

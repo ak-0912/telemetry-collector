@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+// Validate enforces domain invariants on a Telemetry aggregate.
+// Returns an ErrValidation-wrapped error when any required field is missing.
 func (t Telemetry) Validate() error {
 	if t.MetricName == "" {
 		return fmt.Errorf("%w: metric_name is required", ErrValidation)
@@ -24,10 +26,14 @@ func (t Telemetry) Validate() error {
 	return nil
 }
 
+// IsValidationError reports whether err (or any error in its chain) is a
+// domain validation failure.
 func IsValidationError(err error) bool {
 	return errors.Is(err, ErrValidation)
 }
 
+// IsTransientError reports whether err (or any error in its chain) is a
+// transient/retryable failure.
 func IsTransientError(err error) bool {
 	return errors.Is(err, ErrTransient)
 }
